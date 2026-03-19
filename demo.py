@@ -10,6 +10,7 @@ Usage:
 
 import json
 import os
+import textwrap
 from pathlib import Path
 
 from evaluate import evaluate_interview_answer, generate_final_report
@@ -144,6 +145,65 @@ def load_local_env(env_path: str = ".env") -> None:
             os.environ[key] = value
 
 
+def print_section(title: str) -> None:
+    """Print a labeled section header."""
+    print(f"\n{title}")
+    print("-" * len(title))
+
+
+def print_wrapped(label: str, value: str, width: int = 88) -> None:
+    """Print a label and wrapped text for easier terminal reading."""
+    print(f"{label}:")
+    print(textwrap.fill(value, width=width))
+
+
+def print_rubric(rubric: dict) -> None:
+    """Print the rubric in a readable terminal-friendly structure."""
+    print_section("Rubric")
+    print(f"Competency: {rubric.get('competency', 'N/A')}")
+
+    dimensions = rubric.get("dimensions", {})
+    for name, details in dimensions.items():
+        print(f"\n[{name}]")
+        print(textwrap.fill(details.get("description", "N/A"), width=88))
+        print(f"  1 - {details.get('1', 'N/A')}")
+        print(f"  3 - {details.get('3', 'N/A')}")
+        print(f"  5 - {details.get('5', 'N/A')}")
+
+
+def print_evaluation(eval_data: dict) -> None:
+    """Print the evaluation result with scores and rationale per dimension."""
+    print_section("Evaluation Result")
+    print(f"Competency: {eval_data.get('competency', 'N/A')}")
+    print(f"Overall score: {eval_data.get('overall_score', 'N/A')}/5")
+
+    scores = eval_data.get("scores", {})
+    if scores:
+        print("\nScores by dimension:")
+        for name, details in scores.items():
+            score = details.get("score", "N/A")
+            rationale = details.get("rationale", "N/A")
+            print(f"- {name}: {score}/5")
+            print(textwrap.fill(f"  Rationale: {rationale}", width=88))
+
+    strengths = eval_data.get("strengths", [])
+    if strengths:
+        print("\nStrengths:")
+        for item in strengths:
+            print(f"- {item}")
+
+    gaps = eval_data.get("gaps", [])
+    if gaps:
+        print("\nGaps:")
+        for item in gaps:
+            print(f"- {item}")
+
+    summary = eval_data.get("summary")
+    if summary:
+        print()
+        print_wrapped("Summary", summary)
+
+
 def main():
     load_local_env()
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -157,9 +217,12 @@ def main():
     evaluations = []
 
     for i, qa in enumerate(INTERVIEW_QA, 1):
-        print(f"\n--- Question {i}/5: {qa['competency']} ---")
-        print(f"Question: {qa['question']}")
-        print(f"Answer: {qa['answer']}")
+        print("\n" + "=" * 60)
+        print(f"QUESTION {i}/5 - {qa['competency']}")
+        print("=" * 60)
+        print_wrapped("Question", qa["question"])
+        print()
+        print_wrapped("Answer", qa["answer"])
 
         result = evaluate_interview_answer(
             api_key=api_key,
@@ -170,12 +233,9 @@ def main():
             candidate_answer=qa["answer"],
         )
 
-        print("Rubric:")
-        print(json.dumps(result["rubric"], indent=2))
-
+        print_rubric(result["rubric"])
         eval_data = result["evaluation"]
-        print(f"Overall score: {eval_data.get('overall_score', 'N/A')}/5")
-        print(f"Summary: {eval_data.get('summary', 'N/A')}")
+        print_evaluation(eval_data)
 
         evaluations.append(eval_data)
 
