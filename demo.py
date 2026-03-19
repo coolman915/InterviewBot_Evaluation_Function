@@ -170,6 +170,9 @@ def main():
             candidate_answer=qa["answer"],
         )
 
+        print("Rubric:")
+        print(json.dumps(result["rubric"], indent=2))
+
         eval_data = result["evaluation"]
         print(f"Overall score: {eval_data.get('overall_score', 'N/A')}/5")
         print(f"Summary: {eval_data.get('summary', 'N/A')}")
